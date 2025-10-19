@@ -41,7 +41,7 @@ jobs:
       - name: build tag and push docker image to amazon ECR
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: users-service
+          ECR_REPOSITORY: testspace/devops
           IMAGE_TAG: ${{ github.sha }}
         run: |
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG ./applications/user-service-java/user-service
