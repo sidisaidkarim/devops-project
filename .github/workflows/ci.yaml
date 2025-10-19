@@ -1,0 +1,16 @@
+name: my ci
+
+on:
+  push:
+    branches:
+      - main
+  page_build:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: day hello
+        run: echo "hello from github actions"
