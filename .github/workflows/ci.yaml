@@ -33,7 +33,7 @@ jobs:
       - name: configure aws credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::123456789012:role/githu-idp
+          role-to-assume: arn:aws:iam::909177772578:role/githu-idp
           aws-region: eu-west-3
 
       - name: login to amazon ECR
