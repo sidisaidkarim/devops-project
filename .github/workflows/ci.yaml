@@ -79,7 +79,7 @@ jobs:
           echo "[web]" > inventory
           echo "$(aws ec2 describe-instances --instance-ids ${{ secrets.INSTANCE_ID }} --query 'Reservations[0].Instances[0].PublicIpAddress' --output text) ansible_user=ec2-user" >> inventory
 
-          ansible-playbook -i inventory ./infrastructure/ansible/deploy.yml \
+          ansible-playbook -i inventory ./infrastructure/ansible/deploy.yaml \
             --private-key ./temp_rsa \
             --ssh-extra-args='-o StrictHostKeyChecking=no' \
             --extra-vars "ecr_repo=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
