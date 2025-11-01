@@ -83,7 +83,7 @@ jobs:
           echo "$(aws ec2 describe-instances --instance-ids ${{ secrets.INSTANCE_ID }} --query 'Reservations[0].Instances[0].PublicIpAddress' --output text) ansible_user=ubuntu" >> inventory
           ssh-keyscan -H $(cat inventory | grep -v "\[" | cut -d' ' -f1) >> ~/.ssh/known_hosts
           ansible-playbook -i inventory ./infrastructure/ansible/deploy.yaml \
-            --private-key ./temp_rsa \
+            --private-key ~/.ssh/ec2_key \
             --ssh-extra-args='-o StrictHostKeyChecking=no' \
             --extra-vars "ecr_repo=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
 
