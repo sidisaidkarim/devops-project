@@ -60,13 +60,37 @@
         AWS_ACCESS_KEY_ID: "{{ lookup('env', 'AWS_ACCESS_KEY_ID') }}"
         AWS_SECRET_ACCESS_KEY: "{{ lookup('env', 'AWS_SECRET_ACCESS_KEY') }}"
 
-    - name: Login to Amazon ECR
-      shell: |
-        aws ecr get-login-password --region {{ region }} | docker login --username AWS --password-stdin {{ ecr_repo.split('/')[0] }}
+    - name: Debug AWS credentials
+      debug:
+        msg: |
+          AWS_ACCESS_KEY_ID: {{ lookup('env', 'AWS_ACCESS_KEY_ID') | default('NOT SET') | string | regex_replace('(.{10}).*(.{4})', '\1...\2') }}
+          AWS_DEFAULT_REGION: {{ region }}
+          ECR_REPO: {{ ecr_repo }}
+
+    - name: Get ECR login password
+      shell: aws ecr get-login-password --region {{ region }}
       environment:
         AWS_ACCESS_KEY_ID: "{{ lookup('env', 'AWS_ACCESS_KEY_ID') }}"
         AWS_SECRET_ACCESS_KEY: "{{ lookup('env', 'AWS_SECRET_ACCESS_KEY') }}"
         AWS_DEFAULT_REGION: "{{ region }}"
+      register: ecr_login_password
+      no_log: true  # Ne pas afficher le mot de passe dans les logs
+      ignore_errors: yes
+      changed_when: false
+
+    - name: Debug ECR login
+      debug:
+        var: ecr_login_password
+
+    - name: Login to Amazon ECR
+      shell: echo "{{ ecr_login_password.stdout }}" | docker login --username AWS --password-stdin {{ ecr_repo.split('/')[0] }}
+      when: ecr_login_password.rc == 0
+      ignore_errors: yes
+      register: docker_login
+
+    - name: Debug Docker login
+      debug:
+        var: docker_login
 
     - name: Stop and remove old container (if exists)
       shell: |
