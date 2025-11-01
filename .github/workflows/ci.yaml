@@ -54,21 +54,21 @@ jobs:
           sudo apt update
           sudo apt install -y ansible
 
-      - name: Generate temporary SSH key
-        run: |
-          ssh-keygen -t rsa -b 2048 -f ./temp_rsa -q -N ""
-
-      - name: Send temporary SSH public key to EC2 via Instance Connect
-        env:
-          INSTANCE_ID: i-073b7c3671a8196e8
-          AWS_REGION: eu-west-3
-        run: |
-          AZ=$(aws ec2 describe-instances --instance-ids $INSTANCE_ID --query "Reservations[0].Instances[0].Placement.AvailabilityZone" --output text)
-          aws ec2-instance-connect send-ssh-public-key \
-            --instance-id $INSTANCE_ID \
-            --availability-zone $AZ \
-            --instance-os-user ubuntu \
-            --ssh-public-key file://./temp_rsa.pub
+#      - name: Generate temporary SSH key
+#        run: |
+#          ssh-keygen -t rsa -b 2048 -f ./temp_rsa -q -N ""
+#
+#      - name: Send temporary SSH public key to EC2 via Instance Connect
+#        env:
+#          INSTANCE_ID: i-073b7c3671a8196e8
+#          AWS_REGION: eu-west-3
+#        run: |
+#          AZ=$(aws ec2 describe-instances --instance-ids $INSTANCE_ID --query "Reservations[0].Instances[0].Placement.AvailabilityZone" --output text)
+#          aws ec2-instance-connect send-ssh-public-key \
+#            --instance-id $INSTANCE_ID \
+#            --availability-zone $AZ \
+#            --instance-os-user ubuntu \
+#            --ssh-public-key file://./temp_rsa.pub
 
       - name: Deploy with Ansible
         env:
@@ -76,9 +76,12 @@ jobs:
           ECR_REPOSITORY: testspace/devops
           IMAGE_TAG: ${{ github.sha }}
         run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/ec2_key
+          chmod 600 ~/.ssh/ec2_key
           echo "[web]" > inventory
           echo "$(aws ec2 describe-instances --instance-ids ${{ secrets.INSTANCE_ID }} --query 'Reservations[0].Instances[0].PublicIpAddress' --output text) ansible_user=ubuntu" >> inventory
-
+          ssh-keyscan -H $(cat inventory | grep -v "\[" | cut -d' ' -f1) >> ~/.ssh/known_hosts
           ansible-playbook -i inventory ./infrastructure/ansible/deploy.yaml \
             --private-key ./temp_rsa \
             --ssh-extra-args='-o StrictHostKeyChecking=no' \
