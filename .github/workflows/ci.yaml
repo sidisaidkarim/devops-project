@@ -67,7 +67,7 @@ jobs:
           aws ec2-instance-connect send-ssh-public-key \
             --instance-id $INSTANCE_ID \
             --availability-zone $AZ \
-            --instance-os-user ec2-user \
+            --instance-os-user ubuntu \
             --ssh-public-key file://./temp_rsa.pub
 
       - name: Deploy with Ansible
@@ -77,7 +77,7 @@ jobs:
           IMAGE_TAG: ${{ github.sha }}
         run: |
           echo "[web]" > inventory
-          echo "$(aws ec2 describe-instances --instance-ids ${{ secrets.INSTANCE_ID }} --query 'Reservations[0].Instances[0].PublicIpAddress' --output text) ansible_user=ec2-user" >> inventory
+          echo "$(aws ec2 describe-instances --instance-ids ${{ secrets.INSTANCE_ID }} --query 'Reservations[0].Instances[0].PublicIpAddress' --output text) ansible_user=ubuntu" >> inventory
 
           ansible-playbook -i inventory ./infrastructure/ansible/deploy.yaml \
             --private-key ./temp_rsa \
