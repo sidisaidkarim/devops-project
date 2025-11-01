@@ -41,9 +41,32 @@
         state: started
         enabled: true
 
+    - name: Install AWS CLI and other prerequisites
+      apt:
+        name:
+          - python3-pip
+          - awscli
+        state: present
+
+    - name: Configure AWS credentials
+      shell: |
+        mkdir -p ~/.aws
+        echo "[default]" > ~/.aws/credentials
+        echo "aws_access_key_id = $AWS_ACCESS_KEY_ID" >> ~/.aws/credentials
+        echo "aws_secret_access_key = $AWS_SECRET_ACCESS_KEY" >> ~/.aws/credentials
+        echo "[default]" > ~/.aws/config
+        echo "region = {{ region }}" >> ~/.aws/config
+      environment:
+        AWS_ACCESS_KEY_ID: "{{ lookup('env', 'AWS_ACCESS_KEY_ID') }}
+        AWS_SECRET_ACCESS_KEY: "{{ lookup('env', 'AWS_SECRET_ACCESS_KEY') }}
+
     - name: Login to Amazon ECR
       shell: |
         aws ecr get-login-password --region {{ region }} | docker login --username AWS --password-stdin {{ ecr_repo.split('/')[0] }}
+      environment:
+        AWS_ACCESS_KEY_ID: "{{ lookup('env', 'AWS_ACCESS_KEY_ID') }}
+        AWS_SECRET_ACCESS_KEY: "{{ lookup('env', 'AWS_SECRET_ACCESS_KEY') }}
+        AWS_DEFAULT_REGION: "{{ region }}"
 
     - name: Stop and remove old container (if exists)
       shell: |
