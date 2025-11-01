@@ -60,8 +60,7 @@ jobs:
 #
 #      - name: Send temporary SSH public key to EC2 via Instance Connect
 #        env:
-#          INSTANCE_ID: i-073b7c3671a8196e8
-#          AWS_REGION: eu-west-3
+#
 #        run: |
 #          AZ=$(aws ec2 describe-instances --instance-ids $INSTANCE_ID --query "Reservations[0].Instances[0].Placement.AvailabilityZone" --output text)
 #          aws ec2-instance-connect send-ssh-public-key \
@@ -75,12 +74,14 @@ jobs:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           ECR_REPOSITORY: testspace/devops
           IMAGE_TAG: ${{ github.sha }}
+          INSTANCE_ID: i-073b7c3671a8196e8
+          AWS_REGION: eu-west-3
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/ec2_key
           chmod 600 ~/.ssh/ec2_key
           echo "[web]" > inventory
-          echo "$(aws ec2 describe-instances --instance-ids ${{ secrets.INSTANCE_ID }} --query 'Reservations[0].Instances[0].PublicIpAddress' --output text) ansible_user=ubuntu" >> inventory
+          echo "$(aws ec2 describe-instances --instance-ids $INSTANCE_ID --query 'Reservations[0].Instances[0].PublicIpAddress' --output text) ansible_user=ubuntu" >> inventory
           ssh-keyscan -H $(cat inventory | grep -v "\[" | cut -d' ' -f1) >> ~/.ssh/known_hosts
           ansible-playbook -i inventory ./infrastructure/ansible/deploy.yaml \
             --private-key ~/.ssh/ec2_key \
