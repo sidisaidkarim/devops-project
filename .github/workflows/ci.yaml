@@ -49,4 +49,39 @@ jobs:
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG ./applications/user-service-java/user-service
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
+      - name: Install Ansible
+        run: |
+          sudo apt update
+          sudo apt install -y ansible
+
+      - name: Generate temporary SSH key
+        run: |
+          ssh-keygen -t rsa -b 2048 -f ./temp_rsa -q -N ""
+
+      - name: Send temporary SSH public key to EC2 via Instance Connect
+        env:
+          INSTANCE_ID: i-073b7c3671a8196e8
+          AWS_REGION: eu-west-3
+        run: |
+          AZ=$(aws ec2 describe-instances --instance-ids $INSTANCE_ID --query "Reservations[0].Instances[0].Placement.AvailabilityZone" --output text)
+          aws ec2-instance-connect send-ssh-public-key \
+            --instance-id $INSTANCE_ID \
+            --availability-zone $AZ \
+            --instance-os-user ec2-user \
+            --ssh-public-key file://./temp_rsa.pub
+
+      - name: Deploy with Ansible
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: testspace/devops
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          echo "[web]" > inventory
+          echo "$(aws ec2 describe-instances --instance-ids ${{ secrets.INSTANCE_ID }} --query 'Reservations[0].Instances[0].PublicIpAddress' --output text) ansible_user=ec2-user" >> inventory
+
+          ansible-playbook -i inventory ./ansible/deploy.yml \
+            --private-key ./temp_rsa \
+            --ssh-extra-args='-o StrictHostKeyChecking=no' \
+            --extra-vars "ecr_repo=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+
 

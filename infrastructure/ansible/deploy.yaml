@@ -1,0 +1,39 @@
+---
+- hosts: web
+  become: true
+  vars:
+    region: eu-west-3
+    ecr_repo: "{{ ecr_repo }}"  # passé depuis GitHub Actions via extra-vars
+
+  tasks:
+    - name: Ensure Docker is installed
+      package:
+        name: docker
+        state: present
+
+    - name: Ensure Docker service is started and enabled
+      service:
+        name: docker
+        state: started
+        enabled: true
+
+    - name: Login to Amazon ECR
+      shell: |
+        aws ecr get-login-password --region {{ region }} | docker login --username AWS --password-stdin {{ ecr_repo.split('/')[0] }}
+
+    - name: Stop and remove old container (if exists)
+      shell: |
+        docker ps -q --filter "name=user-service" | xargs -r docker stop
+        docker ps -a -q --filter "name=user-service" | xargs -r docker rm
+      ignore_errors: true
+
+    - name: Pull latest image from ECR
+      shell: docker pull {{ ecr_repo }}
+
+    - name: Run the new container on port 80
+      shell: |
+        docker run -d \
+          --name user-service \
+          -p 80:8080 \
+          --restart always \
+          {{ ecr_repo }}
